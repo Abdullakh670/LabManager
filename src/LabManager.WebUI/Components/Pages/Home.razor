@@ -1,18 +1,21 @@
 ﻿@page "/"
-@using LabManager.Infrastructure.Data
+@rendermode InteractiveServer
 @using LabManager.Domain.Entities
 @inject LabManager.Application.Services.IEquipmentService EquipmentService
-@inject ApplicationDbContext DbContext
 
 <PageTitle>Оборудование</PageTitle>
 
 <h1>Доступное оборудование</h1>
 
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="alert alert-info">@message</div>
+}
+
 @if (equipments == null)
 {
     <p><em>Загрузка...</em></p>
 }
-
 else
 {
     <div class="row">
@@ -23,12 +26,16 @@ else
                     <div class="card-body">
                         <h5 class="card-title">@equipment.Name</h5>
                         <p class="card-text text-muted">@equipment.Description</p>
-                       
+
                         <div class="mb-3">
                             <strong>Статус: </strong>
                             @if (equipment.Status.ToString() == "Available")
                             {
                                 <span class="badge bg-success">Доступно</span>
+                            }
+                            else if (equipment.Status.ToString() == "Booked")
+                            {
+                                <span class="badge bg-danger">Занято</span>
                             }
                             else
                             {
@@ -36,12 +43,11 @@ else
                             }
                         </div>
 
-                        <!-- Кнопка бронирования -->
-                        <button class="btn btn-primary w-100" 
-        disabled="@(equipment.Status.ToString() != "Available")"
-        @onclick="() => BookEquipment(equipment.Id)">
-    Забронировать
-</button>
+                        <button class="btn btn-primary w-100"
+                                disabled="@(equipment.Status.ToString() != "Available")"
+                                @onclick="() => BookEquipment(equipment.Id)">
+                            Забронировать
+                        </button>
                     </div>
                 </div>
             </div>
@@ -50,28 +56,39 @@ else
 }
 
 @code {
+    private List<Equipment>? equipments;
+    private string message = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        equipments = await EquipmentService.GetAllEquipmentAsync();
+    }
+
     private async Task BookEquipment(int equipmentId)
     {
-        // Вызываем твой метод из EquipmentService
-        bool success = await EquipmentService.BookEquipmentAsync(
-            equipmentId, 
-            "Abdullakh", // Пока захардкодим твое имя как арендатора для теста
-            DateTime.Now, 
-            DateTime.Now.AddHours(2)
-        );
+        Console.WriteLine($"---> КЛИК СРАБОТАЛ! ID: {equipmentId}");
 
-        if (success)
+        try
         {
-            // Если бронь прошла успешно, заново грузим список из базы SQLite, 
-            // чтобы интерфейс сразу обновился и кнопка отключилась
-            equipments = await EquipmentService.GetAllEquipmentAsync();
-        }
-    }
-    private List<Equipment>? equipments;
+            bool success = await EquipmentService.BookEquipmentAsync(
+                equipmentId,
+                "Abdullakh",
+                DateTime.Now,
+                DateTime.Now.AddHours(2));
 
-    protected override void OnInitialized()
-    {
-        // Получаем список оборудования из базы данных
-        equipments = DbContext.Equipments.ToList();
+            if (success)
+            {
+                message = "Оборудование успешно забронировано.";
+                equipments = await EquipmentService.GetAllEquipmentAsync();
+            }
+            else
+            {
+                message = "Не удалось забронировать: время занято или оборудование недоступно.";
+            }
+        }
+        catch (Exception ex)
+        {
+            message = $"Ошибка: {ex.Message}";
+        }
     }
 }

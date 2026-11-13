@@ -28,15 +28,24 @@ public class EquipmentService : IEquipmentService
 
     public async Task<bool> BookEquipmentAsync(int equipmentId, string studentName, DateTime start, DateTime end)
     {
-        var equipment = await _context.Equipments.FindAsync(equipmentId);
-        
-        // Если оборудования нет или оно сломано/уже занято — отказ
-        if (equipment == null || equipment.Status != ResourceStatus.Available)
-        {
-            return false; 
-        }
+        if (end <= start)
+            return false;
 
-// Создаем новую запись о бронировании
+        var equipment = await _context.Equipments.FindAsync(equipmentId);
+
+        // Если оборудования нет или оно не доступно, отказ
+        if (equipment == null || equipment.Status != ResourceStatus.Available)
+            return false;
+
+        // Конфликт: диапазоны пересекаются, если newStart < existingEnd && newEnd > existingStart
+        bool hasConflict = await _context.Bookings.AnyAsync(b =>
+            b.EquipmentId == equipmentId &&
+            start < b.EndTime &&
+            end > b.StartTime);
+
+        if (hasConflict)
+            return false;
+
         var booking = new Booking
         {
             EquipmentId = equipmentId,
@@ -44,10 +53,13 @@ public class EquipmentService : IEquipmentService
             StartTime = start,
             EndTime = end
         };
-        // Сохраняем в базу
-        _context.Bookings.Add(booking);
-        await _context.SaveChangesAsync();
 
+        _context.Bookings.Add(booking);
+
+        // Меняем статус, чтобы кнопка отключилась и статус стал «Занято»
+        equipment.Status = ResourceStatus.Booked;
+
+        await _context.SaveChangesAsync();
         return true;
     }
 }

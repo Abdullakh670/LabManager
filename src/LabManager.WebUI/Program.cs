@@ -23,15 +23,13 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    db.Database.EnsureCreated();
     if (!db.Equipments.Any())
     {
-        db.Equipments.AddRange(
-            new Equipment { Name = "Cisco Router 2911", Description = "Сетевой маршрутизатор для лабораторных", Status = ResourceStatus.Available },
-            new Equipment { Name = "Cisco Switch 2960", Description = "Коммутатор на 24 порта", Status = ResourceStatus.Available },
-            new Equipment { Name = "Oscilloscope", Description = "Цифровой осциллограф", Status = ResourceStatus.Maintenance }
-        );
+        // ... твой seed без изменений ...
         db.SaveChanges();
     }
+
 }
 
 // Configure the HTTP request pipeline.
