@@ -37,10 +37,11 @@ else
                         </div>
 
                         <!-- Кнопка бронирования -->
-                        <button class="btn btn-primary w-100"
-                                disabled="@(equipment.Status.ToString() != "Available")">
-                            Забронировать
-                        </button>
+                        <button class="btn btn-primary w-100" 
+        disabled="@(equipment.Status.ToString() != "Available")"
+        @onclick="() => BookEquipment(equipment.Id)">
+    Забронировать
+</button>
                     </div>
                 </div>
             </div>
@@ -49,6 +50,23 @@ else
 }
 
 @code {
+    private async Task BookEquipment(int equipmentId)
+    {
+        // Вызываем твой метод из EquipmentService
+        bool success = await EquipmentService.BookEquipmentAsync(
+            equipmentId, 
+            "Abdullakh", // Пока захардкодим твое имя как арендатора для теста
+            DateTime.Now, 
+            DateTime.Now.AddHours(2)
+        );
+
+        if (success)
+        {
+            // Если бронь прошла успешно, заново грузим список из базы SQLite, 
+            // чтобы интерфейс сразу обновился и кнопка отключилась
+            equipments = await EquipmentService.GetAllEquipmentAsync();
+        }
+    }
     private List<Equipment>? equipments;
 
     protected override void OnInitialized()
