@@ -1,0 +1,47 @@
+﻿@page "/"
+@using LabManager.Infrastructure.Data
+@using LabManager.Domain.Entities
+@inject ApplicationDbContext DbContext
+
+<PageTitle>Оборудование</PageTitle>
+
+<h1>Доступное оборудование</h1>
+
+@if (equipments == null)
+{
+    <p><em>Загрузка...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Название</th>
+                <th>Описание</th>
+                <th>Статус</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in equipments)
+            {
+                <tr>
+                    <td>@item.Id</td>
+                    <td>@item.Name</td>
+                    <td>@item.Description</td>
+                    <td>@item.Status</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Equipment>? equipments;
+
+    protected override void OnInitialized()
+    {
+        // Получаем список оборудования из базы данных
+        equipments = DbContext.Equipments.ToList();
+    }
+}
