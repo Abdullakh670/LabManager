@@ -1,5 +1,6 @@
 using LabManager.Application.Services;
-using LabManager.Infrastructure.Services;
+using LabManager.Application.Interfaces;
+using LabManager.Infrastructure.Repositories;
 using LabManager.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using LabManager.WebUI.Components;
@@ -15,6 +16,9 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
     // Регистрируем наш сервис бизнес-логики
+builder.Services.AddScoped<IEquipmentRepository, EquipmentRepository>();
+builder.Services.AddScoped<IBookingRepository, BookingRepository>();
+builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<IEquipmentService, EquipmentService>();
 
 var app = builder.Build();
@@ -24,12 +28,16 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     db.Database.EnsureCreated();
+
     if (!db.Equipments.Any())
     {
-        // ... твой seed без изменений ...
+        db.Equipments.AddRange(
+            new Equipment { Name = "Cisco Router 2911", Description = "Сетевой маршрутизатор для лабораторных", Status = ResourceStatus.Available },
+            new Equipment { Name = "Cisco Switch 2960", Description = "Коммутатор на 24 порта", Status = ResourceStatus.Available },
+            new Equipment { Name = "Oscilloscope", Description = "Цифровой осциллограф", Status = ResourceStatus.Maintenance }
+        );
         db.SaveChanges();
     }
-
 }
 
 // Configure the HTTP request pipeline.
