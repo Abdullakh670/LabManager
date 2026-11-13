@@ -1,3 +1,5 @@
+using LabManager.Application.Services;
+using LabManager.Infrastructure.Services;
 using LabManager.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using LabManager.WebUI.Components;
@@ -12,6 +14,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+    // Регистрируем наш сервис бизнес-логики
+builder.Services.AddScoped<IEquipmentService, EquipmentService>();
 
 var app = builder.Build();
 
