@@ -1,78 +1,122 @@
 ﻿@page "/"
 @rendermode InteractiveServer
 @using LabManager.Domain.Entities
+@using LabManager.Domain.Enums
+@using LabManager.WebUI.Services
+@using Microsoft.AspNetCore.SignalR.Client
 @inject LabManager.Application.Services.IEquipmentService EquipmentService
+@inject CurrentUserState UserState
+@inject NavigationManager Navigation
+@implements IAsyncDisposable
 
 <PageTitle>Оборудование</PageTitle>
 
-<h1>Доступное оборудование</h1>
-
-@if (!string.IsNullOrEmpty(message))
-{
-    <div class="alert alert-info">@message</div>
-}
-
-@if (equipments == null)
+@if (!ready)
 {
     <p><em>Загрузка...</em></p>
 }
 else
 {
-    <div class="row">
-        @foreach (var equipment in equipments)
-        {
-            <div class="col-md-4 mb-4">
-                <div class="card h-100 shadow-sm">
-                    <div class="card-body">
-                        <h5 class="card-title">@equipment.Name</h5>
-                        <p class="card-text text-muted">@equipment.Description</p>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>Доступное оборудование</h1>
+        <div>
+            <span class="me-2">@UserState.Current!.FullName (@UserState.Current.Role)</span>
+            <button class="btn btn-outline-secondary btn-sm" @onclick="Logout">Выйти</button>
+        </div>
+    </div>
 
-                        <div class="mb-3">
-                            <strong>Статус: </strong>
-                            @if (equipment.Status.ToString() == "Available")
-                            {
-                                <span class="badge bg-success">Доступно</span>
-                            }
-                            else if (equipment.Status.ToString() == "Booked")
-                            {
-                                <span class="badge bg-danger">Занято</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-warning text-dark">На обслуживании</span>
-                            }
+    @if (!string.IsNullOrEmpty(message))
+    {
+        <div class="alert alert-info">@message</div>
+    }
+
+    @if (equipments == null)
+    {
+        <p><em>Загрузка...</em></p>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var equipment in equipments)
+            {
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">@equipment.Name</h5>
+                            <p class="card-text text-muted">@equipment.Description</p>
+
+                            <div class="mb-3">
+                                <strong>Статус: </strong>
+                                @if (equipment.Status == ResourceStatus.Available)
+                                {
+                                    <span class="badge bg-success">Доступно</span>
+                                }
+                                else if (equipment.Status == ResourceStatus.Booked)
+                                {
+                                    <span class="badge bg-danger">Занято</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning text-dark">На обслуживании</span>
+                                }
+                            </div>
+
+                            <button class="btn btn-primary w-100"
+                                    disabled="@(equipment.Status != ResourceStatus.Available)"
+                                    @onclick="() => BookEquipment(equipment.Id)">
+                                Забронировать
+                            </button>
                         </div>
-
-                        <button class="btn btn-primary w-100"
-                                disabled="@(equipment.Status.ToString() != "Available")"
-                                @onclick="() => BookEquipment(equipment.Id)">
-                            Забронировать
-                        </button>
                     </div>
                 </div>
-            </div>
-        }
-    </div>
+            }
+        </div>
+    }
 }
 
 @code {
     private List<Equipment>? equipments;
     private string message = "";
+    private bool ready;
+    private HubConnection? hubConnection;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (!firstRender) return;
+
+        // Проверяем, кто вошёл (sessionStorage доступен только после отрисовки)
+        await UserState.InitializeAsync();
+        if (!UserState.IsLoggedIn)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
         equipments = await EquipmentService.GetAllEquipmentAsync();
+        ready = true;
+        StateHasChanged();
+
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/bookinghub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        hubConnection.On("EquipmentUpdated", async () =>
+        {
+            equipments = await EquipmentService.GetAllEquipmentAsync();
+            await InvokeAsync(StateHasChanged);
+        });
+
+        await hubConnection.StartAsync();
     }
 
     private async Task BookEquipment(int equipmentId)
     {
-        Console.WriteLine($"---> КЛИК СРАБОТАЛ! ID: {equipmentId}");
-
         try
         {
             bool success = await EquipmentService.BookEquipmentAsync(
                 equipmentId,
-                "Abdullakh",
+                UserState.Current!.FullName,
                 DateTime.Now,
                 DateTime.Now.AddHours(2));
 
@@ -80,6 +124,9 @@ else
             {
                 message = "Оборудование успешно забронировано.";
                 equipments = await EquipmentService.GetAllEquipmentAsync();
+
+                if (hubConnection is not null)
+                    await hubConnection.SendAsync("NotifyChanged");
             }
             else
             {
@@ -90,5 +137,17 @@ else
         {
             message = $"Ошибка: {ex.Message}";
         }
+    }
+
+    private async Task Logout()
+    {
+        await UserState.LogoutAsync();
+        Navigation.NavigateTo("/login");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+            await hubConnection.DisposeAsync();
     }
 }

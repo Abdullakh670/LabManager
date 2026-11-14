@@ -1,0 +1,53 @@
+@page "/login"
+@rendermode InteractiveServer
+@using LabManager.Application.Services
+@using LabManager.WebUI.Services
+@inject IAuthService AuthService
+@inject CurrentUserState UserState
+@inject NavigationManager Navigation
+
+<PageTitle>Вход</PageTitle>
+
+<div class="mx-auto" style="max-width: 400px;">
+    <h2 class="mb-3">Вход</h2>
+
+    @if (!string.IsNullOrEmpty(error))
+    {
+        <div class="alert alert-danger">@error</div>
+    }
+
+    <div class="mb-3">
+        <label class="form-label">Email</label>
+        <input class="form-control" @bind="email" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Пароль</label>
+        <input type="password" class="form-control" @bind="password" />
+    </div>
+
+    <button class="btn btn-primary w-100" @onclick="LoginAsync">Войти</button>
+
+    <p class="text-muted small mt-3">
+        Тестовые аккаунты: admin@labmanager.local / Admin123,
+        student@labmanager.local / Student123
+    </p>
+</div>
+
+@code {
+    private string email = "";
+    private string password = "";
+    private string? error;
+
+    private async Task LoginAsync()
+    {
+        var user = await AuthService.LoginAsync(email, password);
+        if (user is null)
+        {
+            error = "Неверный email или пароль.";
+            return;
+        }
+
+        await UserState.LoginAsync(user);
+        Navigation.NavigateTo("/");
+    }
+}

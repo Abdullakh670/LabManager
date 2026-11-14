@@ -9,4 +9,5 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<Equipment> Equipments { get; set; }
     public DbSet<Booking> Bookings { get; set; }
+    public DbSet<User> Users { get; set; }
 }

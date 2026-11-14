@@ -1,3 +1,5 @@
+using LabManager.Application.Security;
+using LabManager.WebUI.Services;
 using LabManager.Application.Interfaces;
 using LabManager.Application.Services;
 using LabManager.Domain.Entities;
@@ -22,6 +24,9 @@ builder.Services.AddScoped<IEquipmentRepository, EquipmentRepository>();
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<IEquipmentService, EquipmentService>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<CurrentUserState>();
 
 var app = builder.Build();
 
@@ -39,6 +44,15 @@ using (var scope = app.Services.CreateScope())
             new Equipment { Name = "Oscilloscope", Description = "Цифровой осциллограф", Status = ResourceStatus.Maintenance }
         );
         db.SaveChanges();
+        
+        if (!db.Users.Any())
+{
+    db.Users.AddRange(
+        new User { FullName = "Admin", Email = "admin@labmanager.local", PasswordHash = PasswordHasher.Hash("Admin123"), Role = UserRole.Admin },
+        new User { FullName = "Abdullakh", Email = "student@labmanager.local", PasswordHash = PasswordHasher.Hash("Student123"), Role = UserRole.Student }
+    );
+    db.SaveChanges();
+}
     }
 }
 
