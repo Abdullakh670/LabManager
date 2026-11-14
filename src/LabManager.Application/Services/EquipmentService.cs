@@ -40,4 +40,28 @@ public class EquipmentService : IEquipmentService
         var result = await _bookingService.CreateBookingAsync(equipmentId, studentName, start, end);
         return result.Success;
     }
+
+    public async Task AddEquipmentAsync(string name, string description)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Название обязательно.");
+
+        await _equipment.AddAsync(new Equipment
+        {
+            Name = name.Trim(),
+            Description = description?.Trim() ?? string.Empty,
+            Status = ResourceStatus.Available
+        });
+    }
+
+    public async Task SetMaintenanceAsync(int id, bool maintenance)
+    {
+        var item = await _equipment.GetByIdAsync(id);
+        if (item is null) return;
+
+        item.Status = maintenance ? ResourceStatus.Maintenance : ResourceStatus.Available;
+        await _equipment.UpdateAsync(item);
+    }
+
+    public Task DeleteEquipmentAsync(int id) => _equipment.DeleteAsync(id);
 }

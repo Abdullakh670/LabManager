@@ -1,0 +1,122 @@
+@page "/admin"
+@rendermode InteractiveServer
+@using LabManager.Domain.Entities
+@using LabManager.Domain.Enums
+@using LabManager.WebUI.Services
+@inject LabManager.Application.Services.IEquipmentService EquipmentService
+@inject CurrentUserState UserState
+@inject NavigationManager Navigation
+
+<PageTitle>Админ-панель</PageTitle>
+
+@if (!ready)
+{
+    <p><em>Загрузка...</em></p>
+}
+else
+{
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>Админ-панель</h1>
+        <a href="/" class="btn btn-outline-secondary btn-sm">К оборудованию</a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(message))
+    {
+        <div class="alert alert-info">@message</div>
+    }
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5>Добавить оборудование</h5>
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <input class="form-control" placeholder="Название" @bind="newName" />
+                </div>
+                <div class="col-md-6">
+                    <input class="form-control" placeholder="Описание" @bind="newDescription" />
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-primary w-100" @onclick="Add">Добавить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <table class="table align-middle">
+        <thead>
+            <tr><th>Название</th><th>Описание</th><th>Статус</th><th></th></tr>
+        </thead>
+        <tbody>
+            @foreach (var e in items)
+            {
+                <tr>
+                    <td>@e.Name</td>
+                    <td>@e.Description</td>
+                    <td>@e.Status</td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-warning"
+                                @onclick="() => ToggleMaintenance(e)">
+                            @(e.Status == ResourceStatus.Maintenance ? "Вернуть в работу" : "На обслуживание")
+                        </button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => Delete(e.Id)">Удалить</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Equipment> items = new();
+    private string newName = "";
+    private string newDescription = "";
+    private string message = "";
+    private bool ready;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        await UserState.InitializeAsync();
+        if (!UserState.IsAdmin)
+        {
+            Navigation.NavigateTo("/");
+            return;
+        }
+
+        await Reload();
+        ready = true;
+        StateHasChanged();
+    }
+
+    private async Task Reload() => items = await EquipmentService.GetAllEquipmentAsync();
+
+    private async Task Add()
+    {
+        try
+        {
+            await EquipmentService.AddEquipmentAsync(newName, newDescription);
+            newName = "";
+            newDescription = "";
+            message = "Оборудование добавлено.";
+            await Reload();
+        }
+        catch (Exception ex)
+        {
+            message = $"Ошибка: {ex.Message}";
+        }
+    }
+
+    private async Task ToggleMaintenance(Equipment e)
+    {
+        await EquipmentService.SetMaintenanceAsync(e.Id, e.Status != ResourceStatus.Maintenance);
+        await Reload();
+    }
+
+    private async Task Delete(int id)
+    {
+        await EquipmentService.DeleteEquipmentAsync(id);
+        message = "Оборудование удалено.";
+        await Reload();
+    }
+}

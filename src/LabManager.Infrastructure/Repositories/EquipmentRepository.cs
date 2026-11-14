@@ -29,4 +29,13 @@ public class EquipmentRepository : IEquipmentRepository
         _context.Equipments.Update(equipment);
         await _context.SaveChangesAsync();
     }
+
+    public async Task DeleteAsync(int id)
+    {
+        var entity = await _context.Equipments.FindAsync(id);
+        if (entity is null) return;
+
+        _context.Equipments.Remove(entity);
+        await _context.SaveChangesAsync();
+    }
 }

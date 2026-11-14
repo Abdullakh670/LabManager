@@ -21,6 +21,10 @@ else
         <h1>Доступное оборудование</h1>
         <div>
             <span class="me-2">@UserState.Current!.FullName (@UserState.Current.Role)</span>
+            @if (UserState.IsAdmin)
+            {
+                <a href="/admin" class="btn btn-outline-primary btn-sm me-2">Админ-панель</a>
+            }
             <button class="btn btn-outline-secondary btn-sm" @onclick="Logout">Выйти</button>
         </div>
     </div>
