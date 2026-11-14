@@ -1,0 +1,51 @@
+@using LabManager.Domain.Entities
+@using LabManager.Domain.Enums
+
+<div class="resource-card">
+    <div class="resource-photo">
+        <span>@Initial</span>
+    </div>
+
+    <div class="resource-body">
+        <h5 class="resource-title">@Item.Name</h5>
+        <p class="resource-desc">@Item.Description</p>
+
+        <div class="resource-status">
+            <strong>Статус: </strong>
+            <span class="status-badge @StatusClass">@StatusText</span>
+        </div>
+
+        <button class="btn btn-primary w-100"
+                disabled="@(Item.Status != ResourceStatus.Available)"
+                @onclick="() => OnBook.InvokeAsync(Item.Id)">
+            Забронировать
+        </button>
+    </div>
+</div>
+
+@code {
+    // Данные приходят от родителя
+    [Parameter, EditorRequired]
+    public Equipment Item { get; set; } = default!;
+
+    // Сообщаем родителю, что нажали «Забронировать» (передаём Id оборудования)
+    [Parameter]
+    public EventCallback<int> OnBook { get; set; }
+
+    private string Initial =>
+        string.IsNullOrWhiteSpace(Item.Name) ? "?" : Item.Name[..1].ToUpper();
+
+    private string StatusText => Item.Status switch
+    {
+        ResourceStatus.Available => "Доступно",
+        ResourceStatus.Booked => "Занято",
+        _ => "На обслуживании"
+    };
+
+    private string StatusClass => Item.Status switch
+    {
+        ResourceStatus.Available => "available",
+        ResourceStatus.Booked => "booked",
+        _ => "maintenance"
+    };
+}
