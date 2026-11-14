@@ -16,10 +16,10 @@ public class BookingService : IBookingService
         _bookings = bookings;
     }
 
-    public async Task<BookingResult> CreateBookingAsync(int equipmentId, string studentName, DateTime start, DateTime end)
+    public async Task<BookingResult> CreateBookingAsync(int equipmentId, int userId, DateTime start, DateTime end)
     {
-        if (string.IsNullOrWhiteSpace(studentName))
-            return BookingResult.Fail("Не указано имя студента.");
+        if (userId <= 0)
+            return BookingResult.Fail("Не указан пользователь.");
 
         if (end <= start)
             return BookingResult.Fail("Время окончания должно быть позже начала.");
@@ -37,11 +37,26 @@ public class BookingService : IBookingService
         await _bookings.AddAsync(new Booking
         {
             EquipmentId = equipmentId,
-            StudentName = studentName,
+            UserId = userId,
             StartTime = start,
             EndTime = end
         });
 
+        return BookingResult.Ok();
+    }
+
+    public Task<List<Booking>> GetUserBookingsAsync(int userId) => _bookings.GetByUserAsync(userId);
+
+    public async Task<BookingResult> CancelBookingAsync(int bookingId, int userId)
+    {
+        var booking = await _bookings.GetByIdAsync(bookingId);
+        if (booking == null)
+            return BookingResult.Fail("Бронь не найдена.");
+
+        if (booking.UserId != userId)
+            return BookingResult.Fail("Можно отменять только свои брони.");
+
+        await _bookings.DeleteAsync(booking);
         return BookingResult.Ok();
     }
 }

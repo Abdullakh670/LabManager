@@ -30,11 +30,11 @@ public class BookingServiceTests
         SetupEquipment();
         _bookingRepo.Setup(r => r.HasConflictAsync(1, _start, _end)).ReturnsAsync(false);
 
-        var result = await _service.CreateBookingAsync(1, "Abdullakh", _start, _end);
+        var result = await _service.CreateBookingAsync(1, 5, _start, _end);
 
         Assert.True(result.Success);
         _bookingRepo.Verify(r => r.AddAsync(It.Is<Booking>(b =>
-            b.EquipmentId == 1 && b.StudentName == "Abdullakh" &&
+            b.EquipmentId == 1 && b.UserId == 5 &&
             b.StartTime == _start && b.EndTime == _end)), Times.Once);
     }
 
@@ -44,7 +44,7 @@ public class BookingServiceTests
         SetupEquipment();
         _bookingRepo.Setup(r => r.HasConflictAsync(1, _start, _end)).ReturnsAsync(true);
 
-        var result = await _service.CreateBookingAsync(1, "Abdullakh", _start, _end);
+        var result = await _service.CreateBookingAsync(1, 5, _start, _end);
 
         Assert.False(result.Success);
         _bookingRepo.Verify(r => r.AddAsync(It.IsAny<Booking>()), Times.Never);
@@ -53,7 +53,7 @@ public class BookingServiceTests
     [Fact]
     public async Task Create_WhenEndBeforeStart_Fails()
     {
-        var result = await _service.CreateBookingAsync(1, "Abdullakh", _end, _start);
+        var result = await _service.CreateBookingAsync(1, 5, _end, _start);
 
         Assert.False(result.Success);
         _bookingRepo.Verify(r => r.AddAsync(It.IsAny<Booking>()), Times.Never);
@@ -64,7 +64,7 @@ public class BookingServiceTests
     {
         SetupEquipment(ResourceStatus.Maintenance);
 
-        var result = await _service.CreateBookingAsync(1, "Abdullakh", _start, _end);
+        var result = await _service.CreateBookingAsync(1, 5, _start, _end);
 
         Assert.False(result.Success);
         _bookingRepo.Verify(r => r.AddAsync(It.IsAny<Booking>()), Times.Never);
@@ -75,18 +75,42 @@ public class BookingServiceTests
     {
         _equipmentRepo.Setup(r => r.GetByIdAsync(99)).ReturnsAsync((Equipment?)null);
 
-        var result = await _service.CreateBookingAsync(99, "Abdullakh", _start, _end);
+        var result = await _service.CreateBookingAsync(99, 5, _start, _end);
 
         Assert.False(result.Success);
     }
 
     [Fact]
-    public async Task Create_WhenStudentNameEmpty_Fails()
+    public async Task Create_WhenUserIdInvalid_Fails()
     {
         SetupEquipment();
 
-        var result = await _service.CreateBookingAsync(1, "  ", _start, _end);
+        var result = await _service.CreateBookingAsync(1, 0, _start, _end);
 
         Assert.False(result.Success);
+    }
+
+    [Fact]
+    public async Task Cancel_OwnBooking_Succeeds()
+    {
+        var booking = new Booking { Id = 10, UserId = 5 };
+        _bookingRepo.Setup(r => r.GetByIdAsync(10)).ReturnsAsync(booking);
+
+        var result = await _service.CancelBookingAsync(10, 5);
+
+        Assert.True(result.Success);
+        _bookingRepo.Verify(r => r.DeleteAsync(booking), Times.Once);
+    }
+
+    [Fact]
+    public async Task Cancel_SomeoneElsesBooking_Fails()
+    {
+        var booking = new Booking { Id = 10, UserId = 5 };
+        _bookingRepo.Setup(r => r.GetByIdAsync(10)).ReturnsAsync(booking);
+
+        var result = await _service.CancelBookingAsync(10, 7);
+
+        Assert.False(result.Success);
+        _bookingRepo.Verify(r => r.DeleteAsync(It.IsAny<Booking>()), Times.Never);
     }
 }

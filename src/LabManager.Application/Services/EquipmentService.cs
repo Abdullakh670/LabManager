@@ -35,9 +35,9 @@ public class EquipmentService : IEquipmentService
 
     public Task<Equipment?> GetEquipmentByIdAsync(int id) => _equipment.GetByIdAsync(id);
 
-    public async Task<bool> BookEquipmentAsync(int equipmentId, string studentName, DateTime start, DateTime end)
+    public async Task<bool> BookEquipmentAsync(int equipmentId, int userId, DateTime start, DateTime end)
     {
-        var result = await _bookingService.CreateBookingAsync(equipmentId, studentName, start, end);
+        var result = await _bookingService.CreateBookingAsync(equipmentId, userId, start, end);
         return result.Success;
     }
 

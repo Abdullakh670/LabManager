@@ -30,4 +30,20 @@ public class BookingRepository : IBookingRepository
         _context.Bookings.Add(booking);
         await _context.SaveChangesAsync();
     }
+
+    public Task<List<Booking>> GetByUserAsync(int userId) =>
+        _context.Bookings
+            .Include(b => b.Equipment)
+            .Where(b => b.UserId == userId)
+            .OrderByDescending(b => b.StartTime)
+            .ToListAsync();
+
+    public Task<Booking?> GetByIdAsync(int id) =>
+        _context.Bookings.FirstOrDefaultAsync(b => b.Id == id);
+
+    public async Task DeleteAsync(Booking booking)
+    {
+        _context.Bookings.Remove(booking);
+        await _context.SaveChangesAsync();
+    }
 }

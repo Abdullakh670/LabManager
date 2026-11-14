@@ -21,6 +21,7 @@ else
         <h1>Доступное оборудование</h1>
         <div>
             <span class="me-2">@UserState.Current!.FullName (@UserState.Current.Role)</span>
+            <a href="/my-bookings" class="btn btn-outline-primary btn-sm me-2">Мои бронирования</a>
             @if (UserState.IsAdmin)
             {
                 <a href="/admin" class="btn btn-outline-primary btn-sm me-2">Админ-панель</a>
@@ -100,18 +101,35 @@ else
         ready = true;
         StateHasChanged();
 
-        hubConnection = new HubConnectionBuilder()
-            .WithUrl(Navigation.ToAbsoluteUri("/bookinghub"))
-            .WithAutomaticReconnect()
-            .Build();
+        await ConnectToHubAsync();
+    }
 
-        hubConnection.On("EquipmentUpdated", async () =>
+    private async Task ConnectToHubAsync()
+    {
+        try
         {
-            equipments = await EquipmentService.GetAllEquipmentAsync();
-            await InvokeAsync(StateHasChanged);
-        });
+            // Blazor Server подключается к собственному хабу через localhost
+            var baseUri = new Uri(Navigation.BaseUri);
+            var hubUrl = $"{baseUri.Scheme}://localhost:{baseUri.Port}/bookinghub";
 
-        await hubConnection.StartAsync();
+            hubConnection = new HubConnectionBuilder()
+                .WithUrl(hubUrl)
+                .WithAutomaticReconnect()
+                .Build();
+
+            hubConnection.On("EquipmentUpdated", async () =>
+            {
+                equipments = await EquipmentService.GetAllEquipmentAsync();
+                await InvokeAsync(StateHasChanged);
+            });
+
+            await hubConnection.StartAsync();
+        }
+        catch (Exception ex)
+        {
+            // Страница должна работать, даже если real-time временно недоступен
+            Console.WriteLine($"SignalR недоступен: {ex.Message}");
+        }
     }
 
     private async Task BookEquipment(int equipmentId)
@@ -120,7 +138,7 @@ else
         {
             bool success = await EquipmentService.BookEquipmentAsync(
                 equipmentId,
-                UserState.Current!.FullName,
+                UserState.Current!.Id,
                 DateTime.Now,
                 DateTime.Now.AddHours(2));
 
@@ -129,7 +147,7 @@ else
                 message = "Оборудование успешно забронировано.";
                 equipments = await EquipmentService.GetAllEquipmentAsync();
 
-                if (hubConnection is not null)
+                if (hubConnection is { State: HubConnectionState.Connected })
                     await hubConnection.SendAsync("NotifyChanged");
             }
             else
