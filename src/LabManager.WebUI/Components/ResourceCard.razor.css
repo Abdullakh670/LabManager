@@ -1,0 +1,54 @@
+.resource-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: #fff;
+    border: 1px solid #e3e6ea;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.resource-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+.resource-photo {
+    height: 110px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, #1b2a6b, #5b2a86);
+}
+
+.resource-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: 0.5rem;
+    padding: 1rem 1.25rem;
+}
+
+.resource-title { margin: 0; }
+
+.resource-desc {
+    flex: 1;
+    margin: 0;
+    color: #6c757d;
+}
+
+.status-badge {
+    padding: 0.15rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.status-badge.available { background: #198754; color: #fff; }
+.status-badge.booked { background: #dc3545; color: #fff; }
+.status-badge.maintenance { background: #ffc107; color: #212529; }
