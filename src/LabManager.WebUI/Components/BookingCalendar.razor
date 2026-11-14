@@ -1,0 +1,96 @@
+<div class="calendar-overlay">
+    <div class="booking-calendar">
+        <h5>Бронирование: @Title</h5>
+
+        @if (!string.IsNullOrEmpty(localError ?? Error))
+        {
+            <div class="alert alert-danger py-2">@(localError ?? Error)</div>
+        }
+
+        <div class="mb-3">
+            <label class="form-label">Дата</label>
+            <input type="date" class="form-control" min="@MinDate" @bind="date" />
+        </div>
+
+        <div class="row mb-2">
+            <div class="col">
+                <label class="form-label">Начало</label>
+                <input type="time" class="form-control" @bind="startTime" />
+            </div>
+            <div class="col">
+                <label class="form-label">Окончание</label>
+                <input type="time" class="form-control" @bind="endTime" />
+            </div>
+        </div>
+
+        <div class="quick">
+            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="() => SetDuration(1)">1 час</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="() => SetDuration(2)">2 часа</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="() => SetDuration(3)">3 часа</button>
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-primary" @onclick="Confirm">Подтвердить</button>
+            <button class="btn btn-outline-secondary" @onclick="() => OnCancel.InvokeAsync()">Отмена</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    // Данные сверху вниз: название оборудования и ошибка от сервера
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = "";
+
+    [Parameter]
+    public string? Error { get; set; }
+
+    // События снизу вверх: подтвердили (с выбранным временем) или отменили
+    [Parameter]
+    public EventCallback<BookingRange> OnConfirm { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    private DateOnly date;
+    private TimeOnly startTime;
+    private TimeOnly endTime;
+    private string? localError;
+
+    private string MinDate => DateTime.Today.ToString("yyyy-MM-dd");
+
+    protected override void OnInitialized()
+    {
+        // По умолчанию: ближайший час и длительность 1 час
+        var start = DateTime.Now.AddHours(1);
+        if (start.Hour >= 22)
+            start = DateTime.Today.AddDays(1).AddHours(9);
+
+        date = DateOnly.FromDateTime(start);
+        startTime = new TimeOnly(start.Hour, 0);
+        endTime = startTime.AddHours(1);
+    }
+
+    private void SetDuration(int hours) => endTime = startTime.AddHours(hours);
+
+    private async Task Confirm()
+    {
+        localError = null;
+
+        var start = date.ToDateTime(startTime);
+        var end = date.ToDateTime(endTime);
+
+        if (end <= start)
+        {
+            localError = "Время окончания должно быть позже начала (бронь в пределах одного дня).";
+            return;
+        }
+
+        if (start < DateTime.Now)
+        {
+            localError = "Нельзя бронировать в прошлом.";
+            return;
+        }
+
+        await OnConfirm.InvokeAsync(new BookingRange(start, end));
+    }
+}

@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @using LabManager.Domain.Entities
 @using LabManager.Domain.Enums
+@using LabManager.WebUI.Components
 @using LabManager.WebUI.Services
 @using Microsoft.AspNetCore.SignalR.Client
 @inject LabManager.Application.Services.IEquipmentService EquipmentService
@@ -45,42 +46,25 @@ else
             @foreach (var equipment in equipments)
             {
                 <div class="col-md-4 mb-4">
-                    <div class="card h-100 shadow-sm">
-                        <div class="card-body">
-                            <h5 class="card-title">@equipment.Name</h5>
-                            <p class="card-text text-muted">@equipment.Description</p>
-
-                            <div class="mb-3">
-                                <strong>Статус: </strong>
-                                @if (equipment.Status == ResourceStatus.Available)
-                                {
-                                    <span class="badge bg-success">Доступно</span>
-                                }
-                                else if (equipment.Status == ResourceStatus.Booked)
-                                {
-                                    <span class="badge bg-danger">Занято</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-warning text-dark">На обслуживании</span>
-                                }
-                            </div>
-
-                            <button class="btn btn-primary w-100"
-                                    disabled="@(equipment.Status != ResourceStatus.Available)"
-                                    @onclick="() => BookEquipment(equipment.Id)">
-                                Забронировать
-                            </button>
-                        </div>
-                    </div>
+                    <ResourceCard Item="equipment" OnBook="OpenCalendar" />
                 </div>
             }
         </div>
+    }
+
+    @if (selected is not null)
+    {
+        <BookingCalendar Title="@selected.Name"
+                         Error="@calendarError"
+                         OnConfirm="ConfirmBooking"
+                         OnCancel="CloseCalendar" />
     }
 }
 
 @code {
     private List<Equipment>? equipments;
+    private Equipment? selected;
+    private string? calendarError;
     private string message = "";
     private bool ready;
     private HubConnection? hubConnection;
@@ -132,19 +116,37 @@ else
         }
     }
 
-    private async Task BookEquipment(int equipmentId)
+    // Нажали «Забронировать» на карточке: открываем окно выбора времени
+    private void OpenCalendar(int equipmentId)
     {
-        try
+        selected = equipments?.FirstOrDefault(e => e.Id == equipmentId);
+        calendarError = null;
+        message = "";
+    }
+
+    private void CloseCalendar()
+    {
+        selected = null;
+        calendarError = null;
+    }
+
+    // Подтвердили время в календаре: бронируем через сервис
+    private async Task ConfirmBooking(BookingRange range)
+    {
+        if (selected is null) return;
+try
         {
             bool success = await EquipmentService.BookEquipmentAsync(
-                equipmentId,
+                selected.Id,
                 UserState.Current!.Id,
-                DateTime.Now,
-                DateTime.Now.AddHours(2));
+                range.Start,
+                range.End);
 
             if (success)
             {
-                message = "Оборудование успешно забронировано.";
+                message = $"«{selected.Name}» забронировано: {range.Start:dd.MM.yyyy HH:mm} - {range.End:HH:mm}.";
+                selected = null;
+                calendarError = null;
                 equipments = await EquipmentService.GetAllEquipmentAsync();
 
                 if (hubConnection is { State: HubConnectionState.Connected })
@@ -152,12 +154,12 @@ else
             }
             else
             {
-                message = "Не удалось забронировать: время занято или оборудование недоступно.";
+                calendarError = "Не удалось забронировать: это время уже занято или оборудование недоступно.";
             }
         }
         catch (Exception ex)
         {
-            message = $"Ошибка: {ex.Message}";
+            calendarError = $"Ошибка: {ex.Message}";
         }
     }
 
