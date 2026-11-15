@@ -49,3 +49,89 @@ h1:focus {
 .darker-border-checkbox.form-check-input {
     border-color: #929292;
 }
+#blazor-error-ui {
+    display: none !important;
+}
+/* =========================================
+   Адаптивная сетка карточек оборудования
+   ========================================= */
+
+/* Контейнер, который держит все карточки */
+.equipment-container {
+    display: flex;
+    flex-wrap: wrap;       /* Разрешаем перенос на новую строку */
+    gap: 20px;             /* Расстояние между карточками */
+    justify-content: flex-start;
+}
+
+/* Сама карточка (ResourceCard) */
+.equipment-card {
+    display: flex;
+    flex-direction: column;
+    /* На больших экранах: 3 карточки в ряд (33.3% минус отступы) */
+    flex: 1 1 calc(33.333% - 20px); 
+    min-width: 280px;      /* Карточка не сузится меньше 280px */
+    background-color: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 16px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Эффект при наведении */
+.equipment-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Картинка внутри карточки */
+.equipment-card img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    object-fit: cover;
+}
+
+/* Тело карточки тянется, чтобы кнопки внизу всегда были на одном уровне */
+.equipment-card-body {
+    flex-grow: 1; 
+}
+
+/* Блок с кнопкой "Забронировать" */
+.equipment-card-footer {
+    margin-top: auto; /* Прижимаем к низу */
+    padding-top: 15px;
+}
+
+/* =========================================
+   Media Queries (Правила для телефонов и планшетов)
+   ========================================= */
+
+/* Для планшетов (экраны меньше 992px) */
+@media (max-width: 992px) {
+    .equipment-card {
+        /* 2 карточки в ряд */
+        flex: 1 1 calc(50% - 20px); 
+    }
+}
+
+/* Для мобильных телефонов (экраны меньше 768px) */
+@media (max-width: 768px) {
+    .equipment-card {
+        /* 1 карточка в ряд (на всю ширину экрана) */
+        flex: 1 1 100%; 
+    }
+
+    /* Уменьшаем боковые отступы у самой страницы, чтобы сэкономить место */
+    .content.px-4 {
+        padding-left: 15px !important;
+        padding-right: 15px !important;
+    }
+    
+    /* Делаем заголовки чуть меньше на телефоне */
+    h1, h2 {
+        font-size: 1.5rem;
+    }
+}
